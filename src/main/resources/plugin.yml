@@ -1,0 +1,4 @@
+name: customItem
+version: '0.1'
+main: by.miendert.customItem.CustomItem
+api-version: '1.21'
