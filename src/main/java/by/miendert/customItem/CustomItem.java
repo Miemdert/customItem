@@ -65,7 +65,14 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         }
 
 
+
         ItemStack itemInHand = player.getInventory().getItemInMainHand();
+
+        if (itemInHand == null || itemInHand.getType() == Material.AIR) {
+            player.sendMessage("§cВозьмите предмет в руку для редактирования!");
+            return true;
+        }
+
         ItemMeta itemMeta = itemInHand.getItemMeta();
         List<String> lore = itemMeta.hasLore() ? new ArrayList<>(itemMeta.getLore()) : new ArrayList<>();
         pendingLore.put(player.getUniqueId(), lore);
@@ -76,11 +83,6 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
             enchantsCopy.putAll(itemMeta.getEnchants());
         }
         selectedEnchants.put(player.getUniqueId(), enchantsCopy);
-
-        if (itemInHand == null || itemInHand.getType() == Material.AIR) {
-            player.sendMessage("§cВозьмите предмет в руку для редактирования!");
-            return true;
-        }
 
 
         pendingItems.put(player.getUniqueId(), itemInHand.clone());
