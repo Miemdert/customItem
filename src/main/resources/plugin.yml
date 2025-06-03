@@ -2,3 +2,12 @@ name: customItem
 version: '0.1'
 main: by.miendert.customItem.CustomItem
 api-version: '1.21'
+commands:
+  item:
+    description: Create item
+    usage: /item WIP
+
+permissions:
+  customItem.use:
+    description: Main permission
+    default: op

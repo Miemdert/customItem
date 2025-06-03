@@ -1,0 +1,4 @@
+## customItem config
+
+permissionlack: "You don't have permission to do that!"
+ignorelevelrestrictions: false
