@@ -1,6 +1,6 @@
 # 🎮 CustomItem
 
-![Version](https://img.shields.io/badge/version-0.1-blue)
+![Version](https://img.shields.io/badge/version-0.2-blue)
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.21.x-green)
 [![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
 [![Build Status](https://github.com/Miemdert/customItem/actions/workflows/build-jar.yml/badge.svg)](https://github.com/Miemdert/customItem/actions)
@@ -32,7 +32,7 @@
 
 ### 🔄 В процессе разработки
 - [ ] Мультиязычная поддержка
-- [ ] Разный цвет для разный уровней лора
+- [ ] Разный цвет для разных уровней лора
 
 ### 💡 Идеи для реализации
 - [ ] Генератор превью предметов в чате
