@@ -1,5 +1,9 @@
 package by.miendert.customItem;
 
+import by.miendert.customItem.config.PluginConfig;
+import by.miendert.customItem.model.CustomItemData;
+import by.miendert.customItem.model.PlayerSession;
+import by.miendert.customItem.service.SessionManager;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -23,16 +27,13 @@ import java.util.stream.Collectors;
 
 public class CustomItem extends JavaPlugin implements CommandExecutor, Listener {
 
-    private String permissionlack;
-    private final Map<UUID, String> pendingInputs = new HashMap<>();
     private final Map<UUID, ItemStack> pendingItems = new HashMap<>();
-    private Boolean ignoreLevelRestrictions;
-    private final Map<UUID, List<String>> pendingLore = new HashMap<>();
     private final Map<Enchantment, Integer> maxEnchantLevels = new HashMap<>();
     private final Map<UUID, Map<Enchantment, Integer>> selectedEnchants = new HashMap<>();
     private final Map<UUID, Enchantment> currentEnchantSelection = new HashMap<>();
-    private Boolean isLoreSet;
-    private Map<UUID, ItemStack> pendinColor = new HashMap<>();
+
+    PluginConfig pluginConfig = new PluginConfig(this);
+    SessionManager sessionManager = new SessionManager();
 
     @Override
     public void onEnable() {
@@ -41,7 +42,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         for (Enchantment enchant : Enchantment.values()) {
             maxEnchantLevels.put(enchant, enchant.getMaxLevel());
         }
-        loadConfig();
+        pluginConfig.load();
     }
 
     @Override
@@ -59,11 +60,9 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         Player player = (Player) sender;
 
         if (!player.hasPermission("customItem.use")) {
-            player.sendMessage(permissionlack);
+            player.sendMessage(pluginConfig.getPermissionlack());
             return true;
         }
-
-
 
         ItemStack itemInHand = player.getInventory().getItemInMainHand();
 
@@ -72,50 +71,30 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
             return true;
         }
 
-        ItemMeta itemMeta = itemInHand.getItemMeta();
-        List<String> lore = itemMeta.hasLore() ? new ArrayList<>(itemMeta.getLore()) : new ArrayList<>();
-        pendingLore.put(player.getUniqueId(), lore);
-
-
-        Map<Enchantment, Integer> enchantsCopy = new HashMap<>();
-        if (itemMeta.hasEnchants()) {
-            enchantsCopy.putAll(itemMeta.getEnchants());
-        }
-        selectedEnchants.put(player.getUniqueId(), enchantsCopy);
-
-
-        pendingItems.put(player.getUniqueId(), itemInHand.clone());
+        sessionManager.startEditing(player, itemInHand);
         openCustomItemMenu(player);
-
         return true;
     }
 
-    public void loadConfig() {
-        getConfig().options().copyDefaults(true);
-        saveConfig();
-        permissionlack = getConfig().getString("permissionlack", "§cУ вас нет прав на использование этой команды!");
-        ignoreLevelRestrictions = getConfig().getBoolean("ignoreLevelRestrictions", false);
-    }
 
     private void openCustomItemMenu(Player player) {
         Inventory gui = Bukkit.createInventory(null, 27, "§6Создание предмета");
 
-        ItemStack item = pendingItems.get(player.getUniqueId());
-        ItemMeta itemMeta = item.getItemMeta();
+        PlayerSession session = sessionManager.getSession(player);
+        CustomItemData data = session.getItemData();
 
 
-        if (itemMeta.getLore() != null) {
-            isLoreSet = true;
-        } else isLoreSet = false;
+
+
 
         List<String> Lore = new ArrayList<>();
         Lore.add("§7Кликните, чтобы добавить описание");
         Lore.add("§6Текущий лор:");
 
-        if (pendingLore.isEmpty()) {
+        if (!data.hasLore()) {
             Lore.add("§4Нет");
         } else {
-            Lore.addAll(pendingLore.get(player.getUniqueId()));
+            Lore.addAll(data.getLore());
         }
 
         ItemStack fillerItem = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
@@ -145,12 +124,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         colorButton.setItemMeta(colorMeta);
         gui.setItem(3, colorButton);
 
-        String name;
-        if (!itemMeta.hasDisplayName()) {
-            name = item.getType().name().toLowerCase().replace("_", " ");
-        } else {
-            name = itemMeta.getDisplayName();
-        }
+        String name = data.getDisplayName();
 
         ItemStack itemname = new ItemStack(Material.NAME_TAG);
         ItemMeta itemnameMeta = itemname.getItemMeta();
@@ -178,7 +152,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         ItemMeta enchantsMeta = enchantsInfo.getItemMeta();
         enchantsMeta.setDisplayName("§bТекущие зачарования");
 
-        Map<Enchantment, Integer> enchants = selectedEnchants.getOrDefault(player.getUniqueId(), new HashMap<>());
+        Map<Enchantment, Integer> enchants = data.getEnchants();
         List<String> lore = new ArrayList<>();
 
         if (enchants.isEmpty()) {
@@ -216,6 +190,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         }
 
         Player player = (Player) event.getWhoClicked();
+        PlayerSession session = sessionManager.getSession(player);
         ItemStack clickedItem = event.getCurrentItem();
 
         if (clickedItem == null || clickedItem.getType() == Material.AIR) {
@@ -234,13 +209,13 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
             case NAME_TAG:
                 player.closeInventory();
                 player.sendMessage("§aВведите имя предмета в чат:");
-                pendingInputs.put(player.getUniqueId(), "waiting_for_name");
+                session.setInputState(PlayerSession.InputState.waiting_for_name);
                 break;
 
             case BOOK:
                 player.closeInventory();
                 player.sendMessage("§aВведите текст лора в чат:");
-                pendingInputs.put(player.getUniqueId(), "waiting_for_lore");
+                session.setInputState(PlayerSession.InputState.waiting_for_lore);
                 break;
 
             case ENCHANTED_BOOK:
@@ -267,7 +242,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
             case BARRIER:
                 player.closeInventory();
-                pendingItems.remove(player.getUniqueId());
+                sessionManager.removeSession(player);
                 player.sendMessage("§cРедактирование отменено");
                 break;
         }
@@ -276,54 +251,39 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
     @EventHandler
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
+        PlayerSession session = sessionManager.getSession(player);
         UUID uuid = player.getUniqueId();
 
-        if (!pendingInputs.containsKey(uuid)) {
+        if (session.isInputPending()) {
             return;
         }
 
         event.setCancelled(true);
         String text = event.getMessage();
-        String inputType = pendingInputs.get(uuid);
-        ItemStack item = pendingItems.get(uuid);
+        CustomItemData data = session.getItemData();
 
-        if (item == null) {
+        if (data == null) {
             player.sendMessage("§cОшибка: предмет не найден!");
-            pendingInputs.remove(uuid);
+            session.clearInputState();
             return;
         }
 
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) {
-            player.sendMessage("§cОшибка: не удалось получить ItemMeta!");
-            pendingInputs.remove(uuid);
-            return;
-        }
 
-        switch (inputType) {
-            case "waiting_for_name":
-                meta.setDisplayName(text);
+        switch (session.getInputState()) {
+            case waiting_for_name:
+                data.setDisplayName(text);
                 break;
 
-            case "waiting_for_lore":
-                List<String> lore;
-                if(pendingLore.containsKey(uuid)) {
-                    lore = pendingLore.get(uuid);
-                } else  lore = new ArrayList<>();
-                lore.add(text);
-                pendingLore.remove(uuid);
-                pendingLore.put(player.getUniqueId(), lore);
-                meta.setLore(lore);
+            case waiting_for_lore:
+                data.addLore(text);
                 break;
         }
 
-        item.setItemMeta(meta);
-        pendingItems.put(uuid, item);
         Bukkit.getScheduler().runTask(this, () -> {
             openCustomItemMenu(player);
         });
 
-        pendingInputs.remove(uuid);
+        session.clearInputState();
     }
 
     private void openColorMenu(Player player) {
@@ -418,6 +378,8 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         event.setCancelled(true);
         Player player = (Player) event.getWhoClicked();
         ItemStack clicked = event.getCurrentItem();
+        PlayerSession session = sessionManager.getSession(player);
+        CustomItemData data = session.getItemData();
 
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
@@ -432,44 +394,38 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         }
 
         if (clicked.getType().toString().endsWith("_DYE")) {
-            pendinColor.put(player.getUniqueId(), clicked);
+            session.setSelectedDye(clicked);
             applyColorMenu(player, true);
         }
     }
 
     private void applyColorToItem(Player player, boolean applyToLore) {
-        ItemStack item = pendingItems.get(player.getUniqueId());
-        if (item == null) return;
+        PlayerSession session = sessionManager.getSession(player);
+        CustomItemData data = session.getItemData();
+        if (data == null) return;
 
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return;
 
-        ItemStack dye = pendinColor.get(player.getUniqueId());
+        ItemStack dye = session.getSelectedDye();
         if (dye == null || !dye.getItemMeta().hasDisplayName()) return;
 
         String colorCode = dye.getItemMeta().getDisplayName().substring(0, 2);
 
         if (applyToLore) {
-            if (meta.hasLore()) {
-                List<String> coloredLore = meta.getLore().stream()
+            if (data.hasLore()) {
+                List<String> coloredLore = data.getLore().stream()
                         .map(line -> colorCode + ChatColor.stripColor(line))
                         .collect(Collectors.toList());
-                meta.setLore(coloredLore);
+                data.setLore(coloredLore);
             } else {
                 player.sendMessage("§cУ предмета нет лора для окрашивания");
             }
         } else {
-            if (meta.hasDisplayName()) {
-                String currentName = meta.getDisplayName();
+
+                String currentName = data.getDisplayName();
                 String strippedName = ChatColor.stripColor(currentName);
-                meta.setDisplayName(colorCode + strippedName);
-            } else {
-                player.sendMessage("§cУ предмета нет названия для окрашивания");
-            }
+                data.setDisplayName(colorCode + strippedName);
         }
 
-        item.setItemMeta(meta);
-        pendingItems.put(player.getUniqueId(), item);
     }
 
     private void applyColorMenu(Player player, boolean isApplying) {
@@ -522,20 +478,21 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
         event.setCancelled(true);
         Player player = (Player) event.getWhoClicked();
+        PlayerSession session = sessionManager.getSession(player);
         ItemStack clicked = event.getCurrentItem();
 
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
         if (clicked.getType() == Material.ARROW && event.getSlot() == 22) {
-            pendinColor.remove(player.getUniqueId());
+            session.clearSelectedDye();
             openColorMenu(player);
             return;
         }
 
         if (clicked.getType() == Material.NAME_TAG && event.getSlot() == 10) {
-            if (pendinColor.containsKey(player.getUniqueId())) {
+            if (session.isDyeSelected()) {
                 applyColorToItem(player, false);
-                pendinColor.remove(player.getUniqueId());
+                session.clearSelectedDye();
             } else {
                 resetItemColor(player, false);
             }
@@ -544,9 +501,9 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         }
 
         if (clicked.getType() == Material.BOOK && event.getSlot() == 16) {
-            if(pendinColor.containsKey(player.getUniqueId())){
+            if(session.isDyeSelected()){
                 applyColorToItem(player, true);
-                pendinColor.remove(player.getUniqueId());
+                session.clearSelectedDye();
             }else {
                 resetItemColor(player, true);
             }
@@ -557,31 +514,24 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
     }
 
     private void resetItemColor(Player player, Boolean resetLore) {
-        ItemStack item = pendingItems.get(player.getUniqueId());
-        if (item == null) return;
-
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return;
+        PlayerSession session = sessionManager.getSession(player);
+        CustomItemData data = session.getItemData();
+        if (data == null) return;
 
 
         if(!resetLore){
-            if (meta.hasDisplayName()) {
-                meta.setDisplayName(ChatColor.stripColor(meta.getDisplayName()));
-            }
+                data.setDisplayName(ChatColor.stripColor(data.getDisplayName()));
         }
 
 
         if (resetLore){
-            if (meta.hasLore()) {
-                List<String> strippedLore = meta.getLore().stream()
+            if (data.hasLore()) {
+                List<String> strippedLore = data.getLore().stream()
                         .map(ChatColor::stripColor)
                         .collect(Collectors.toList());
-                meta.setLore(strippedLore);
+                data.setLore(strippedLore);
             }
         }
-
-        item.setItemMeta(meta);
-        pendingItems.put(player.getUniqueId(), item);
     }
     private void openEnchantMenu(Player player) {
         Inventory enchantGUI = Bukkit.createInventory(null, 54, "§6Выбор зачарований");
@@ -863,7 +813,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
             lastspot = level;
 
             ItemStack targetItem = pendingItems.get(player.getUniqueId());
-            boolean compatible = enchant.canEnchantItem(targetItem) || ignoreLevelRestrictions;
+            boolean compatible = enchant.canEnchantItem(targetItem) || pluginConfig.getIgnoreLevelRestrictions();
 
             meta.setLore(Arrays.asList(
                     (compatible?"§aСовместимо":"§4Не совместимо"),
@@ -924,7 +874,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
                 ItemStack targetItem = pendingItems.get(player.getUniqueId());
                 if (!enchant.canEnchantItem(targetItem)) {
-                    if (!ignoreLevelRestrictions) {
+                    if (!pluginConfig.getIgnoreLevelRestrictions()) {
                         player.sendMessage("§cЭто зачарование несовместимо с вашим предметом!");
                         return;
                     }
@@ -956,7 +906,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         if (enchants != null) {
             enchants.forEach((enchant, level) -> {
                 try {
-                    meta.addEnchant(enchant, level, ignoreLevelRestrictions);
+                    meta.addEnchant(enchant, level, pluginConfig.getIgnoreLevelRestrictions());
                 } catch (IllegalArgumentException e) {
                     player.sendMessage("§cНе удалось добавить " + getEnchantName(enchant) + " (несовместимо)");
                 }
