@@ -1,5 +1,7 @@
 package by.miendert.customItem.model;
 
+import by.miendert.customItem.CustomItem;
+import by.miendert.customItem.config.PluginConfig;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 
@@ -9,6 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public class PlayerSession {
+    private final CustomItem plugin;
     public enum InputState {none,waiting_for_name,waiting_for_lore,}
     private final CustomItemData itemData;
     private final ItemStack originalItem;
@@ -16,9 +19,15 @@ public class PlayerSession {
     private Enchantment currentEnchantSelection = null;
     private ItemStack selectedDye = null;
 
-    public PlayerSession(ItemStack item){
+    public PlayerSession(ItemStack item, CustomItem plugin){
+        this.plugin = plugin;
         originalItem = item.clone();
-        itemData = CustomItemData.fromItemStack(item);
+        itemData = CustomItemData.fromItemStack(item, plugin.getPluginConfig());
+
+    }
+
+    public ItemStack getItem(){
+        return itemData.getItemStack();
     }
 
     public CustomItemData getItemData() {

@@ -1,5 +1,6 @@
 package by.miendert.customItem.service;
 
+import by.miendert.customItem.CustomItem;
 import by.miendert.customItem.model.PlayerSession;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -13,8 +14,8 @@ import java.util.UUID;
 public class SessionManager {
     private final Map<UUID, PlayerSession> sessions = new HashMap<>();
 
-    public void startEditing(Player player, ItemStack item){
-        PlayerSession session = new PlayerSession(item);
+    public void startEditing(Player player, ItemStack item, CustomItem plugin){
+        PlayerSession session = new PlayerSession(item, plugin);
         sessions.put(player.getUniqueId(), session);
     }
 

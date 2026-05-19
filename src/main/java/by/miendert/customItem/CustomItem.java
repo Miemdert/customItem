@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 
 public class CustomItem extends JavaPlugin implements CommandExecutor, Listener {
 
-    private final Map<UUID, ItemStack> pendingItems = new HashMap<>();
     private final Map<Enchantment, Integer> maxEnchantLevels = new HashMap<>();
     private final Map<UUID, Map<Enchantment, Integer>> selectedEnchants = new HashMap<>();
     private final Map<UUID, Enchantment> currentEnchantSelection = new HashMap<>();
@@ -71,7 +70,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
             return true;
         }
 
-        sessionManager.startEditing(player, itemInHand);
+        sessionManager.startEditing(player, itemInHand, this);
         openCustomItemMenu(player);
         return true;
     }
@@ -82,10 +81,6 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
         PlayerSession session = sessionManager.getSession(player);
         CustomItemData data = session.getItemData();
-
-
-
-
 
         List<String> Lore = new ArrayList<>();
         Lore.add("§7Кликните, чтобы добавить описание");
@@ -228,15 +223,14 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
                 break;
 
             case ANVIL:
-                ItemStack item = pendingItems.get(player.getUniqueId());
+                ItemStack item = sessionManager.getSession(player).getItem();
                 if (item == null) {
                     player.sendMessage("§cОшибка: предмет не найден!");
                     return;
                 }
                 player.getInventory().setItem(player.getInventory().getHeldItemSlot(), item);
                 player.sendMessage("§aПредмет изменен!");
-                pendingItems.remove(player.getUniqueId());
-                selectedEnchants.clear();
+                sessionManager.removeSession(player);
                 player.closeInventory();
                 break;
 
@@ -254,7 +248,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         PlayerSession session = sessionManager.getSession(player);
         UUID uuid = player.getUniqueId();
 
-        if (session.isInputPending()) {
+        if (!session.isInputPending()) {
             return;
         }
 
@@ -812,7 +806,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
             lastspot = level;
 
-            ItemStack targetItem = pendingItems.get(player.getUniqueId());
+            ItemStack targetItem = sessionManager.getSession(player).getItem();
             boolean compatible = enchant.canEnchantItem(targetItem) || pluginConfig.getIgnoreLevelRestrictions();
 
             meta.setLore(Arrays.asList(
@@ -872,7 +866,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
                 Enchantment enchant = currentEnchantSelection.get(player.getUniqueId());
 
 
-                ItemStack targetItem = pendingItems.get(player.getUniqueId());
+                ItemStack targetItem = sessionManager.getSession(player).getItem();
                 if (!enchant.canEnchantItem(targetItem)) {
                     if (!pluginConfig.getIgnoreLevelRestrictions()) {
                         player.sendMessage("§cЭто зачарование несовместимо с вашим предметом!");
@@ -892,7 +886,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
     private void applyEnchantsToItem(Player player) {
         UUID uuid = player.getUniqueId();
-        ItemStack item = pendingItems.get(uuid);
+        ItemStack item = sessionManager.getSession(player).getItem();
         if (item == null) return;
 
         ItemMeta meta = item.getItemMeta();
@@ -914,7 +908,6 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         }
 
         item.setItemMeta(meta);
-        pendingItems.put(uuid, item);
     }
 
 
@@ -935,5 +928,9 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
             }
         }
         return null;
+    }
+
+    public PluginConfig getPluginConfig() {
+        return pluginConfig;
     }
 }
