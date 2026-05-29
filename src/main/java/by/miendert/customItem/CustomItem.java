@@ -4,6 +4,8 @@ import by.miendert.customItem.config.PluginConfig;
 import by.miendert.customItem.model.CustomItemData;
 import by.miendert.customItem.model.PlayerSession;
 import by.miendert.customItem.service.SessionManager;
+import by.miendert.customItem.ui.MainMenu;
+import by.miendert.customItem.ui.Menu;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -33,6 +35,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
     PluginConfig pluginConfig = new PluginConfig(this);
     SessionManager sessionManager = new SessionManager();
+    Menu menu;
 
     @Override
     public void onEnable() {
@@ -71,101 +74,16 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         }
 
         sessionManager.startEditing(player, itemInHand, this);
-        openCustomItemMenu(player);
+        MainMenu mainMenu = new MainMenu(this);
+        mainMenu.open(player);
         return true;
     }
 
 
-    private void openCustomItemMenu(Player player) {
-        Inventory gui = Bukkit.createInventory(null, 27, "§6Создание предмета");
 
-        PlayerSession session = sessionManager.getSession(player);
-        CustomItemData data = session.getItemData();
 
-        List<String> Lore = new ArrayList<>();
-        Lore.add("§7Кликните, чтобы добавить описание");
-        Lore.add("§6Текущий лор:");
 
-        if (!data.hasLore()) {
-            Lore.add("§4Нет");
-        } else {
-            Lore.addAll(data.getLore());
-        }
 
-        ItemStack fillerItem = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta fillerMeta = fillerItem.getItemMeta();
-        fillerMeta.setDisplayName(ChatColor.GRAY.toString() + ChatColor.STRIKETHROUGH +  "|||||");
-        fillerItem.setItemMeta(fillerMeta);
-        int i = 0;
-        while(i != 27){
-            if (i == 1 || i == 3 || i == 5 || i == 7 || i == 23 || i == 21){
-                i++;
-            }
-            gui.setItem(i, fillerItem);
-            i++;
-        }
-
-        ItemStack loreButton = new ItemStack(Material.BOOK);
-        ItemMeta loreMeta = loreButton.getItemMeta();
-        loreMeta.setDisplayName("§aДобавить лор");
-        loreMeta.setLore(Lore);
-        loreButton.setItemMeta(loreMeta);
-        gui.setItem(1, loreButton);
-
-        ItemStack colorButton = new ItemStack(Material.GRAY_DYE);
-        ItemMeta colorMeta = colorButton.getItemMeta();
-        colorMeta.setDisplayName("§aВыбрать цвет");
-        colorMeta.setLore(Arrays.asList("§7Кликните, чтобы выбрать цвет"));
-        colorButton.setItemMeta(colorMeta);
-        gui.setItem(3, colorButton);
-
-        String name = data.getDisplayName();
-
-        ItemStack itemname = new ItemStack(Material.NAME_TAG);
-        ItemMeta itemnameMeta = itemname.getItemMeta();
-        itemnameMeta.setDisplayName("§aВыбрать название предмета");
-        itemnameMeta.setLore(Arrays.asList("§7Кликните, чтобы ввести имя предмета",
-                "§6Текущее имя: " + name));
-        itemname.setItemMeta(itemnameMeta);
-        gui.setItem(5, itemname);
-
-        ItemStack createButton = new ItemStack(Material.ANVIL);
-        ItemMeta createMeta = createButton.getItemMeta();
-        createMeta.setDisplayName("§eСоздать предмет");
-        createMeta.setLore(Arrays.asList("§7Кликните, чтобы получить предмет"));
-        createButton.setItemMeta(createMeta);
-        gui.setItem(7, createButton);
-
-        ItemStack exit = new ItemStack(Material.BARRIER);
-        ItemMeta exitMeta = exit.getItemMeta();
-        exitMeta.setDisplayName("§4Выход");
-        exitMeta.setLore(Arrays.asList("§7Кликните, чтобы выйти"));
-        exit.setItemMeta(exitMeta);
-        gui.setItem(23, exit);
-
-        ItemStack enchantsInfo = new ItemStack(Material.ENCHANTED_BOOK);
-        ItemMeta enchantsMeta = enchantsInfo.getItemMeta();
-        enchantsMeta.setDisplayName("§bТекущие зачарования");
-
-        Map<Enchantment, Integer> enchants = data.getEnchants();
-        List<String> lore = new ArrayList<>();
-
-        if (enchants.isEmpty()) {
-            lore.add("§7Нет выбранных зачарований");
-        } else {
-            lore.add("§7Выбрано: §e" + enchants.size() + " зачарований");
-            enchants.forEach((e, l) ->
-                    lore.add("§7- " + getEnchantName(e) + " §e" + toRoman(l)));
-        }
-
-        lore.add("");
-        lore.add("§aКликните для изменения");
-        enchantsMeta.setLore(lore);
-        enchantsInfo.setItemMeta(enchantsMeta);
-        gui.setItem(21, enchantsInfo);
-
-        player.openInventory(gui);
-    }
 
     private String toRoman(int number) {
         String[] roman = {"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"};
@@ -274,7 +192,8 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         }
 
         Bukkit.getScheduler().runTask(this, () -> {
-            openCustomItemMenu(player);
+            menu = new MainMenu(this);
+            menu.open(player);
         });
 
         session.clearInputState();
@@ -378,7 +297,8 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
         if (clicked.getType() == Material.ARROW && event.getSlot() == 45) {
-            openCustomItemMenu(player);
+            menu = new MainMenu(this);
+            menu.open(player);
             return;
         }
 
@@ -490,7 +410,8 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
             } else {
                 resetItemColor(player, false);
             }
-            openCustomItemMenu(player);
+            menu = new MainMenu(this);
+            menu.open(player);
             return;
         }
 
@@ -502,7 +423,8 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
                 resetItemColor(player, true);
             }
 
-            openCustomItemMenu(player);
+            menu = new MainMenu(this);
+            menu.open(player);
             return;
         }
     }
@@ -771,7 +693,8 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
         if (clicked.getType() == Material.EMERALD && event.getSlot() == 53) {
             applyEnchantsToItem(player);
-            openCustomItemMenu(player);
+            menu=new MainMenu(this);
+            menu.open(player);
             return;
         }
 
@@ -930,6 +853,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         return null;
     }
 
+    public SessionManager getSessionManager(){return sessionManager;}
     public PluginConfig getPluginConfig() {
         return pluginConfig;
     }
