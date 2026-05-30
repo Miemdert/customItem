@@ -329,22 +329,20 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
-
         if (clicked.getType() == Material.EMERALD && event.getSlot() == 53) {
-            applyEnchantsToItem(player);
+            sessionManager.getSession(player).applyEnchants();
             menu=new MainMenu(this);
             menu.open(player);
             return;
         }
 
-
         if (clicked.getType() == Material.ENCHANTED_BOOK) {
             Enchantment enchant = getEnchantFromDisplayName(clicked.getItemMeta().getDisplayName());
             if (enchant == null) return;
-
             if (event.isLeftClick()) {
-
+                sessionManager.getSession(player).setCurrentEnchantSelection(enchant);
                 menu = new EnchantmentLevelSelectMenu(this, enchant);
+                menu.open(player);
             } else if (event.isRightClick()) {
 
                 selectedEnchants.get(player.getUniqueId()).remove(enchant);
@@ -355,11 +353,14 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
     @EventHandler
     public void onLevelSelect(InventoryClickEvent event) {
+
         if (!event.getView().getTitle().startsWith("§6Выбор уровня:")) return;
 
         event.setCancelled(true);
         Player player = (Player) event.getWhoClicked();
         ItemStack clicked = event.getCurrentItem();
+
+        PlayerSession session = sessionManager.getSession(player);
 
         if (clicked == null) return;
 
@@ -374,10 +375,10 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         if (clicked.getType() == Material.PAPER || clicked.getType() == Material.BARRIER) {
             try {
                 int level = Integer.parseInt(clicked.getItemMeta().getDisplayName().replace("§eУровень ", ""));
-                Enchantment enchant = currentEnchantSelection.get(player.getUniqueId());
+                Enchantment enchant = session.getCurrentEnchantSelection();
 
 
-                ItemStack targetItem = sessionManager.getSession(player).getItem();
+                ItemStack targetItem = session.getItem();
                 if (!enchant.canEnchantItem(targetItem)) {
                     if (!pluginConfig.getIgnoreLevelRestrictions()) {
                         player.sendMessage("§cЭто зачарование несовместимо с вашим предметом!");
@@ -385,8 +386,8 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
                     }
                 }
 
+                session.addEnchantToSelection(enchant,level);
 
-                selectedEnchants.get(player.getUniqueId()).put(enchant, level);
                 menu = new EnchantMenu(this);
                 menu.open(player);
             } catch (NumberFormatException e) {
@@ -395,32 +396,6 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         }
     }
 
-
-    private void applyEnchantsToItem(Player player) {
-        UUID uuid = player.getUniqueId();
-        ItemStack item = sessionManager.getSession(player).getItem();
-        if (item == null) return;
-
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return;
-
-
-        meta.getEnchants().keySet().forEach(meta::removeEnchant);
-
-
-        Map<Enchantment, Integer> enchants = selectedEnchants.get(uuid);
-        if (enchants != null) {
-            enchants.forEach((enchant, level) -> {
-                try {
-                    meta.addEnchant(enchant, level, pluginConfig.getIgnoreLevelRestrictions());
-                } catch (IllegalArgumentException e) {
-                    player.sendMessage("§cНе удалось добавить " + getEnchantName(enchant) + " (несовместимо)");
-                }
-            });
-        }
-
-        item.setItemMeta(meta);
-    }
 
     private void updateEnchantMenu(Player player) {
         Bukkit.getScheduler().runTask(this, () -> {

@@ -119,4 +119,8 @@ public class CustomItemData {
     public void setEnchants(Map<Enchantment, Integer> enchants) {
         this.enchants = enchants;
     }
+
+    public void addEnchants(Enchantment enchantment, Integer level){
+        enchants.put(enchantment,level);
+    }
 }

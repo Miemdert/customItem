@@ -36,9 +36,8 @@ public class EnchantmentLevelSelectMenu extends EnchantMenu{
         PluginConfig pluginConfig = plugin.getPluginConfig();
         session.setCurrentEnchantSelection(enchantment);
 
-        fillBackground();
         addSelectedEnchantmentLevels(gui, enchantment, pluginConfig.getIgnoreLevelRestrictions(), session.getOriginalItem());
-
+        player.sendMessage(enchantment.toString());
         player.openInventory(gui);
 }
     private void addSelectedEnchantmentLevels(Inventory gui, Enchantment enchantment, boolean ignoreLevelRestriction, ItemStack targetItem){

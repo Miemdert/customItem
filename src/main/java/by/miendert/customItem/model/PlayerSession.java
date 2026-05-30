@@ -4,13 +4,17 @@ import by.miendert.customItem.CustomItem;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class PlayerSession {
     private final CustomItem plugin;
     public enum InputState {none,waiting_for_name,waiting_for_lore,}
     private final CustomItemData itemData;
     private final ItemStack originalItem;
     private InputState inputState = InputState.none;
-    private Enchantment currentEnchantSelection = null;
+    private Enchantment currentEnchantSelection;
+    private Map<Enchantment, Integer> enchantSelection = new HashMap<>();
     private ItemStack selectedDye = null;
     private boolean applyingColor = false;
 
@@ -29,9 +33,10 @@ public class PlayerSession {
         return itemData;
     }
 
-    public Enchantment getCurrentEnchantSelection() {
-        return currentEnchantSelection;
+    public Map<Enchantment, Integer> getEnchantSelection() {
+        return enchantSelection;
     }
+
 
     public InputState getInputState() {
         return inputState;
@@ -47,6 +52,18 @@ public class PlayerSession {
 
     public void setCurrentEnchantSelection(Enchantment currentEnchantSelection) {
         this.currentEnchantSelection = currentEnchantSelection;
+    }
+
+    public Enchantment getCurrentEnchantSelection() {
+        return currentEnchantSelection;
+    }
+
+    public void addEnchantToSelection(Enchantment currentEnchantSelection, Integer level) {
+        this.enchantSelection.put(currentEnchantSelection, level);
+    }
+
+    public void applyEnchants(){
+        enchantSelection.forEach(itemData::addEnchants);
     }
 
     public void setInputState(InputState inputState) {
