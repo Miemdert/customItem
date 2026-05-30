@@ -9,6 +9,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.Collections;
 import java.util.List;
 
 public abstract class Menu {
@@ -16,6 +17,9 @@ public abstract class Menu {
     protected  Inventory gui;
     protected  String title;
     protected  int size;
+
+    protected final ItemStack backButton = createButton(Material.ARROW,
+            List.of("Кликните, чтобы вернуться назад"), "§eНазад");
 
     protected Menu(){}
 
@@ -43,14 +47,24 @@ public abstract class Menu {
         return fillerItem;
     }
 
-    protected ItemStack createButton(Material material, List<String> Lore, String Name){
+    protected ItemStack createButton(Material material, List<String> Lore, String name){
         ItemStack button = new ItemStack(material);
         ItemMeta buttonMeta = button.getItemMeta();
         assert buttonMeta != null;
-        buttonMeta.setDisplayName(Name);
+        buttonMeta.setDisplayName(name);
         buttonMeta.setLore(Lore);
         button.setItemMeta(buttonMeta);
         return button;
+    }
+
+    protected ItemStack createButton(Material dye, String name, int customModelData){
+        ItemStack item = new ItemStack(dye);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(name);
+        meta.setCustomModelData(customModelData);
+        meta.setLore(Collections.singletonList("§aКликните для выбора"));
+        item.setItemMeta(meta);
+        return item;
     }
 
     public abstract void open(Player player);

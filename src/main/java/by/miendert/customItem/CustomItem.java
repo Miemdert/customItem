@@ -4,8 +4,8 @@ import by.miendert.customItem.config.PluginConfig;
 import by.miendert.customItem.model.CustomItemData;
 import by.miendert.customItem.model.PlayerSession;
 import by.miendert.customItem.service.SessionManager;
-import by.miendert.customItem.ui.MainMenu;
-import by.miendert.customItem.ui.Menu;
+import by.miendert.customItem.ui.*;
+import by.miendert.customItem.util.Tools;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -27,9 +27,12 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static by.miendert.customItem.util.Tools.getEnchantFromDisplayName;
+import static by.miendert.customItem.util.Tools.getEnchantName;
+
 public class CustomItem extends JavaPlugin implements CommandExecutor, Listener {
 
-    private final Map<Enchantment, Integer> maxEnchantLevels = new HashMap<>();
+
     private final Map<UUID, Map<Enchantment, Integer>> selectedEnchants = new HashMap<>();
     private final Map<UUID, Enchantment> currentEnchantSelection = new HashMap<>();
 
@@ -41,9 +44,6 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
     public void onEnable() {
         getLogger().info("CustomItem is enabled");
         getServer().getPluginManager().registerEvents(this, this);
-        for (Enchantment enchant : Enchantment.values()) {
-            maxEnchantLevels.put(enchant, enchant.getMaxLevel());
-        }
         pluginConfig.load();
     }
 
@@ -54,12 +54,10 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!(sender instanceof Player)) {
+        if (!(sender instanceof Player player)) {
             sender.sendMessage("Эта команда только для игроков!");
             return true;
         }
-
-        Player player = (Player) sender;
 
         if (!player.hasPermission("customItem.use")) {
             player.sendMessage(pluginConfig.getPermissionlack());
@@ -77,17 +75,6 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         MainMenu mainMenu = new MainMenu(this);
         mainMenu.open(player);
         return true;
-    }
-
-
-
-
-
-
-
-    private String toRoman(int number) {
-        String[] roman = {"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"};
-        return number > 0 && number <= roman.length ? roman[number-1] : "" + number;
     }
 
     @EventHandler
@@ -115,7 +102,8 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
                 if (event.getSlot() == 3 ){
                     player.closeInventory();
                     Bukkit.getScheduler().runTask(this, () -> {
-                        openColorMenu(player);
+                        menu = new ColorPicker(this);
+                        menu.open(player);
                     });
                 }
                 break;
@@ -135,7 +123,8 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
                 if (event.getSlot() == 21) {
                     player.closeInventory();
                     Bukkit.getScheduler().runTask(this, () -> {
-                        openEnchantMenu(player);
+                        menu = new EnchantMenu(this);
+                        menu.open(player);
                     });
                 }
                 break;
@@ -199,91 +188,6 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         session.clearInputState();
     }
 
-    private void openColorMenu(Player player) {
-        Inventory colorMenu = Bukkit.createInventory(null, 54, "§6Выбор цвета предмета");
-
-
-        ItemStack white = createColorItem(Material.WHITE_DYE, "§fБелый", 10);
-        ItemStack orange = createColorItem(Material.ORANGE_DYE, "§6Оранжевый", 11);
-        ItemStack magenta = createColorItem(Material.MAGENTA_DYE, "§dПурпурный", 12);
-        ItemStack lightBlue = createColorItem(Material.LIGHT_BLUE_DYE, "§9Голубой", 13);
-        ItemStack yellow = createColorItem(Material.YELLOW_DYE, "§eЖёлтый", 14);
-        ItemStack lime = createColorItem(Material.LIME_DYE, "§aЛаймовый", 15);
-        ItemStack pink = createColorItem(Material.PINK_DYE, "§cРозовый", 16);
-
-
-        ItemStack gray = createColorItem(Material.GRAY_DYE, "§8Серый", 19);
-        ItemStack lightGray = createColorItem(Material.LIGHT_GRAY_DYE, "§7Светло-серый", 20);
-        ItemStack cyan = createColorItem(Material.CYAN_DYE, "§3Бирюзовый", 21);
-        ItemStack purple = createColorItem(Material.PURPLE_DYE, "§5Фиолетовый", 22);
-        ItemStack blue = createColorItem(Material.BLUE_DYE, "§1Синий", 23);
-        ItemStack brown = createColorItem(Material.BROWN_DYE, "§4Коричневый", 24);
-        ItemStack green = createColorItem(Material.GREEN_DYE, "§2Зелёный", 25);
-        ItemStack red = createColorItem(Material.RED_DYE, "§4Красный", 28);
-        ItemStack black = createColorItem(Material.BLACK_DYE, "§0Чёрный", 29);
-
-
-        ItemStack reset = new ItemStack(Material.BARRIER);
-        ItemMeta resetMeta = reset.getItemMeta();
-        resetMeta.setDisplayName("§cСбросить цвет");
-        reset.setItemMeta(resetMeta);
-        colorMenu.setItem(53, reset);
-
-
-        ItemStack back = new ItemStack(Material.ARROW);
-        ItemMeta backMeta = back.getItemMeta();
-        backMeta.setDisplayName("§eНазад");
-        back.setItemMeta(backMeta);
-        colorMenu.setItem(45, back);
-
-
-        colorMenu.setItem(10, white);
-        colorMenu.setItem(11, orange);
-        colorMenu.setItem(12, magenta);
-        colorMenu.setItem(13, lightBlue);
-        colorMenu.setItem(14, yellow);
-        colorMenu.setItem(15, lime);
-        colorMenu.setItem(16, pink);
-        colorMenu.setItem(19, gray);
-        colorMenu.setItem(20, lightGray);
-        colorMenu.setItem(21, cyan);
-        colorMenu.setItem(22, purple);
-        colorMenu.setItem(23, blue);
-        colorMenu.setItem(24, brown);
-        colorMenu.setItem(25, green);
-        colorMenu.setItem(28, red);
-        colorMenu.setItem(29, black);
-
-        int[] usedSlots = {10,11,12,13,14,15,16,19,20,21,22,23,24,25,28,29,53,45};
-
-        ItemStack fillerItem = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta fillerMeta = fillerItem.getItemMeta();
-        fillerMeta.setDisplayName(ChatColor.GRAY.toString() + ChatColor.STRIKETHROUGH +  "|||||");
-        fillerItem.setItemMeta(fillerMeta);
-
-        int i = 0;
-        while (i != 53) {
-            int currentI = i;
-            if (Arrays.stream(usedSlots).anyMatch(s -> s == currentI)) {
-                i++;
-            } else {
-                colorMenu.setItem(i, fillerItem);
-                i++;
-            }
-        }
-        player.openInventory(colorMenu);
-    }
-
-    private ItemStack createColorItem(Material dye, String name, int customModelData) {
-        ItemStack item = new ItemStack(dye);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(name);
-        meta.setCustomModelData(customModelData);
-        meta.setLore(Collections.singletonList("§aКликните для выбора"));
-        item.setItemMeta(meta);
-        return item;
-    }
-
     @EventHandler
     public void onColorMenuClick(InventoryClickEvent event) {
         if (!event.getView().getTitle().equals("§6Выбор цвета предмета")) return;
@@ -303,13 +207,19 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         }
 
         if (clicked.getType() == Material.BARRIER && event.getSlot() == 53) {
-            applyColorMenu(player, false);
+            //Очистка цвета
+            session.setApplyingColor(false);
+            menu = new ApplyColorMenu(this);
+            menu.open(player);
             return;
         }
 
         if (clicked.getType().toString().endsWith("_DYE")) {
+            //Применение цвета
             session.setSelectedDye(clicked);
-            applyColorMenu(player, true);
+            session.setApplyingColor(true);
+            menu = new ApplyColorMenu(this);
+            menu.open(player);
         }
     }
 
@@ -342,49 +252,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
     }
 
-    private void applyColorMenu(Player player, boolean isApplying) {
-        Inventory applyMenu = Bukkit.createInventory(null, 27, "§6Применить к");
 
-        // BOOK - для названия (слот 10)
-        ItemStack nameItem = new ItemStack(Material.NAME_TAG);
-        ItemMeta nameMeta = nameItem.getItemMeta();
-        nameMeta.setDisplayName((isApplying?"§3Применить к названию":"§3Очистить цвет названия"));
-        nameMeta.setLore(Arrays.asList((isApplying?"§aКликните, чтобы применить цвет к названию":"§aКликните, чтобы очистить цвет названиия")));
-        nameItem.setItemMeta(nameMeta);
-        applyMenu.setItem(10, nameItem);
-
-        // NAME_TAG - для лора (слот 16)
-        ItemStack loreItem = new ItemStack(Material.BOOK);
-        ItemMeta loreMeta = loreItem.getItemMeta();
-        loreMeta.setDisplayName((isApplying?"§eПрименить к лору":"§eОчистить цвет лора"));
-        loreMeta.setLore(Arrays.asList((isApplying?"§aКликните, чтобы применить цвет к лору":"§aКликните, чтобы очистить цвет лора")));
-        loreItem.setItemMeta(loreMeta);
-        applyMenu.setItem(16, loreItem);
-
-        // Кнопка назад (слот 22)
-        ItemStack back = new ItemStack(Material.ARROW);
-        ItemMeta backMeta = back.getItemMeta();
-        backMeta.setDisplayName("§eНазад");
-        back.setItemMeta(backMeta);
-        applyMenu.setItem(22, back);
-
-        ItemStack fillerItem = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta fillerMeta = fillerItem.getItemMeta();
-        fillerMeta.setDisplayName(ChatColor.GRAY.toString() + ChatColor.STRIKETHROUGH +  "|||||");
-        fillerItem.setItemMeta(fillerMeta);
-
-        int i = 0;
-
-        while(i != 27){
-            if (i == 22 || i == 16 || i ==10){
-                i++;
-            }
-            applyMenu.setItem(i, fillerItem);
-            i++;
-        }
-
-        player.openInventory(applyMenu);
-    }
 
     @EventHandler
     public void onClickApplyMenu(InventoryClickEvent event) {
@@ -399,7 +267,8 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
         if (clicked.getType() == Material.ARROW && event.getSlot() == 22) {
             session.clearSelectedDye();
-            openColorMenu(player);
+            menu = new ColorPicker(this);
+            menu.open(player);
             return;
         }
 
@@ -449,236 +318,6 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
             }
         }
     }
-    private void openEnchantMenu(Player player) {
-        Inventory enchantGUI = Bukkit.createInventory(null, 54, "§6Выбор зачарований");
-
-
-        selectedEnchants.putIfAbsent(player.getUniqueId(), new HashMap<>());
-
-        List<Enchantment> sortedEnchants = Arrays.stream(Enchantment.values())
-                .sorted(Comparator.comparing(e -> getEnchantName(e).toLowerCase()))
-                .collect(Collectors.toList());
-
-        for (int i = 0; i < sortedEnchants.size(); i++) {
-            Enchantment enchant = sortedEnchants.get(i);
-            ItemStack enchantItem = new ItemStack(Material.ENCHANTED_BOOK);
-            ItemMeta meta = enchantItem.getItemMeta();
-
-            int currentLevel = selectedEnchants.get(player.getUniqueId()).getOrDefault(enchant, 0);
-            String selectedStatus = currentLevel > 0 ? "§a✔ Уровень " + currentLevel : "§c✖ Не выбрано";
-
-            meta.setDisplayName("§e" + getEnchantName(enchant));
-            meta.setLore(Arrays.asList(
-                    "§7Макс. уровень: §e" + maxEnchantLevels.get(enchant),
-                    "§7Совместимость: §e" + getCompatibleItems(enchant),
-                    "",
-                    selectedStatus,
-                    "",
-                    "§aЛКМ - выбрать уровень",
-                    "§cПКМ - удалить зачарование"
-            ));
-
-            enchantItem.setItemMeta(meta);
-            enchantGUI.setItem(i, enchantItem);
-        }
-
-        ItemStack fillerItem = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta fillerMeta = fillerItem.getItemMeta();
-        fillerMeta.setDisplayName(ChatColor.GRAY.toString() + ChatColor.STRIKETHROUGH +  "|||||");
-        fillerItem.setItemMeta(fillerMeta);
-
-        int i = sortedEnchants.size();
-
-        while (i != 53 ){
-            enchantGUI.setItem(i, fillerItem);
-            i++;
-        }
-
-        ItemStack confirm = new ItemStack(Material.EMERALD);
-        ItemMeta confirmMeta = confirm.getItemMeta();
-        confirmMeta.setDisplayName("§aПодтвердить выбор");
-        confirmMeta.setLore(Arrays.asList(
-                "§7Выбрано: §e" + selectedEnchants.get(player.getUniqueId()).size() + " зачарований",
-                "§aКликните для возврата"
-        ));
-        confirm.setItemMeta(confirmMeta);
-        enchantGUI.setItem(53, confirm);
-
-        player.openInventory(enchantGUI);
-    }
-
-
-
-    private String getCompatibleItems(Enchantment enchant) {
-        List<String> compatible = new ArrayList<>();
-
-        if (canEnchantType(enchant, Material.DIAMOND_SWORD, Material.IRON_SWORD, Material.GOLDEN_SWORD,
-                Material.STONE_SWORD, Material.WOODEN_SWORD, Material.NETHERITE_SWORD)) {
-            compatible.add("мечи");
-        }
-
-        if (canEnchantType(enchant, Material.DIAMOND_AXE, Material.IRON_AXE, Material.GOLDEN_AXE,
-                Material.STONE_AXE, Material.WOODEN_AXE, Material.NETHERITE_AXE)) {
-            compatible.add("топоры");
-        }
-
-        if (canEnchantType(enchant, Material.DIAMOND_PICKAXE, Material.IRON_PICKAXE, Material.GOLDEN_PICKAXE,
-                Material.STONE_PICKAXE, Material.WOODEN_PICKAXE, Material.NETHERITE_PICKAXE)) {
-            compatible.add("кирки");
-        }
-
-        if (canEnchantType(enchant, Material.DIAMOND_SHOVEL, Material.IRON_SHOVEL, Material.GOLDEN_SHOVEL,
-                Material.STONE_SHOVEL, Material.WOODEN_SHOVEL, Material.NETHERITE_SHOVEL)) {
-            compatible.add("лопаты");
-        }
-
-        if (canEnchantType(enchant, Material.DIAMOND_HOE, Material.IRON_HOE, Material.GOLDEN_HOE,
-                Material.STONE_HOE, Material.WOODEN_HOE, Material.NETHERITE_HOE)) {
-            compatible.add("мотыги");
-        }
-
-        if (canEnchantType(enchant, Material.DIAMOND_HELMET, Material.IRON_HELMET, Material.GOLDEN_HELMET,
-                Material.LEATHER_HELMET, Material.CHAINMAIL_HELMET, Material.NETHERITE_HELMET,
-                Material.TURTLE_HELMET)) {
-            compatible.add("шлемы");
-        }
-
-        if (canEnchantType(enchant, Material.DIAMOND_CHESTPLATE, Material.IRON_CHESTPLATE, Material.GOLDEN_CHESTPLATE,
-                Material.LEATHER_CHESTPLATE, Material.CHAINMAIL_CHESTPLATE, Material.NETHERITE_CHESTPLATE)) {
-            compatible.add("нагрудники");
-        }
-
-        if (canEnchantType(enchant, Material.DIAMOND_LEGGINGS, Material.IRON_LEGGINGS, Material.GOLDEN_LEGGINGS,
-                Material.LEATHER_LEGGINGS, Material.CHAINMAIL_LEGGINGS, Material.NETHERITE_LEGGINGS)) {
-            compatible.add("поножи");
-        }
-
-        if (canEnchantType(enchant, Material.DIAMOND_BOOTS, Material.IRON_BOOTS, Material.GOLDEN_BOOTS,
-                Material.LEATHER_BOOTS, Material.CHAINMAIL_BOOTS, Material.NETHERITE_BOOTS)) {
-            compatible.add("ботинки");
-        }
-
-        if (canEnchantType(enchant, Material.BOW)) {
-            compatible.add("луки");
-        }
-
-        if (canEnchantType(enchant, Material.CROSSBOW)) {
-            compatible.add("арбалеты");
-        }
-
-        if (canEnchantType(enchant, Material.TRIDENT)) {
-            compatible.add("трезубцы");
-        }
-
-        if (canEnchantType(enchant, Material.FISHING_ROD)) {
-            compatible.add("удочки");
-        }
-
-        if (canEnchantType(enchant, Material.SHEARS)) {
-            compatible.add("ножницы");
-        }
-
-        if (canEnchantType(enchant, Material.FLINT_AND_STEEL)) {
-            compatible.add("огнива");
-        }
-
-        if (canEnchantType(enchant, Material.CARROT_ON_A_STICK, Material.WARPED_FUNGUS_ON_A_STICK)) {
-            compatible.add("удочки с морковью/грибом");
-        }
-
-        if (canEnchantType(enchant, Material.ELYTRA)) {
-            compatible.add("элитры");
-        }
-
-        if (canEnchantType(enchant, Material.SHIELD)) {
-            compatible.add("щиты");
-        }
-
-        if (enchant.equals(Enchantment.MENDING) || enchant.equals(Enchantment.VANISHING_CURSE)) {
-            compatible.add("все инструменты, оружие и броня");
-        }
-
-        if (enchant.equals(Enchantment.BINDING_CURSE)) {
-            compatible.add("броня");
-        }
-
-        if (compatible.isEmpty()) {
-            return "специальные предметы";
-        }
-
-        return String.join(", ", compatible);
-    }
-
-
-    private boolean canEnchantType(Enchantment enchant, Material... materials) {
-        for (Material material : materials) {
-            if (enchant.canEnchantItem(new ItemStack(material))) {
-                return true;
-            }
-        }
-        return false;
-    }
-    private String getEnchantName(Enchantment enchant) {
-        switch (enchant.getKey().getKey()) {
-            // Броня
-            case "protection": return "Защита";
-            case "fire_protection": return "Огнеупорность";
-            case "feather_falling": return "Невесомость";
-            case "blast_protection": return "Взрывоустойчивость";
-            case "projectile_protection": return "Защита от снарядов";
-            case "respiration": return "Подводное дыхание";
-            case "aqua_affinity": return "Подводник";
-            case "thorns": return "Шипы";
-            case "depth_strider": return "Глубинный шаг";
-            case "frost_walker": return "Ледяная поступь";
-            case "binding_curse": return "Проклятие несъемности";
-            case "soul_speed": return "Скорость душ";
-            case "swift_sneak": return "Тихий шаг";
-
-            // Оружие
-            case "sharpness": return "Острота";
-            case "smite": return "Небесная кара";
-            case "bane_of_arthropods": return "Гибель членистоногих";
-            case "knockback": return "Отбрасывание";
-            case "fire_aspect": return "Огненный аспект";
-            case "looting": return "Грабеж";
-            case "sweeping": return "Разящий клинок";
-            case "impaling": return "Пронзание";
-            case "loyalty": return "Верность";
-            case "riptide": return "Прибой";
-            case "channeling": return "Громовержец";
-
-            // Инструменты
-            case "efficiency": return "Эффективность";
-            case "silk_touch": return "Шелковое касание";
-            case "unbreaking": return "Прочность";
-            case "fortune": return "Удача";
-            case "power": return "Мощь";
-            case "punch": return "Отдача";
-            case "flame": return "Пламя";
-            case "infinity": return "Бесконечность";
-            case "luck_of_the_sea": return "Морская удача";
-            case "lure": return "Приманка";
-            case "mending": return "Починка";
-            case "vanishing_curse": return "Проклятие исчезновения";
-            case "multishot": return "Залп";
-            case "piercing": return "Пробивание";
-            case "quick_charge": return "Быстрая перезарядка";
-
-            // Другие
-            case "arrow_damage": return "Мощь";
-            case "arrow_knockback": return "Отдача";
-            case "arrow_fire": return "Пламя";
-            case "arrow_infinite": return "Бесконечность";
-
-
-            default:
-                String key = enchant.getKey().getKey();
-                return Arrays.stream(key.split("_"))
-                        .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1))
-                        .collect(Collectors.joining(" "));
-        }
-    }
 
     @EventHandler
     public void onEnchantMenuClick(InventoryClickEvent event) {
@@ -705,7 +344,7 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
             if (event.isLeftClick()) {
 
-                openLevelSelectMenu(player, enchant);
+                menu = new EnchantmentLevelSelectMenu(this, enchant);
             } else if (event.isRightClick()) {
 
                 selectedEnchants.get(player.getUniqueId()).remove(enchant);
@@ -714,58 +353,6 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         }
     }
 
-    private void openLevelSelectMenu(Player player, Enchantment enchant) {
-        Inventory levelGUI = Bukkit.createInventory(null, 27, "§6Выбор уровня: " + getEnchantName(enchant));
-
-
-        currentEnchantSelection.put(player.getUniqueId(), enchant);
-
-        int lastspot = 0;
-
-        for (int level = 1; level <= maxEnchantLevels.get(enchant); level++) {
-            ItemStack levelItem = new ItemStack(Material.PAPER);
-            ItemMeta meta = levelItem.getItemMeta();
-            meta.setDisplayName("§eУровень " + level);
-
-            lastspot = level;
-
-            ItemStack targetItem = sessionManager.getSession(player).getItem();
-            boolean compatible = enchant.canEnchantItem(targetItem) || pluginConfig.getIgnoreLevelRestrictions();
-
-            meta.setLore(Arrays.asList(
-                    (compatible?"§aСовместимо":"§4Не совместимо"),
-                    "§aКликните для выбора"
-            ));
-
-            if (!compatible) {
-                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-                levelItem.setType(Material.BARRIER);
-            }
-
-            levelItem.setItemMeta(meta);
-            levelGUI.addItem(levelItem);
-        }
-
-
-        ItemStack back = new ItemStack(Material.ARROW);
-        ItemMeta backMeta = back.getItemMeta();
-        backMeta.setDisplayName("§cНазад");
-        back.setItemMeta(backMeta);
-        levelGUI.setItem(18, back);
-
-        ItemStack fillerItem = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta fillerMeta = fillerItem.getItemMeta();
-        fillerMeta.setDisplayName(ChatColor.GRAY.toString() + ChatColor.STRIKETHROUGH +  "|||||");
-        fillerItem.setItemMeta(fillerMeta);
-
-        while(lastspot != levelGUI.getSize()) {
-            if (lastspot == 18) lastspot++;
-            levelGUI.setItem(lastspot, fillerItem);
-            lastspot++;
-        }
-
-        player.openInventory(levelGUI);
-    }
     @EventHandler
     public void onLevelSelect(InventoryClickEvent event) {
         if (!event.getView().getTitle().startsWith("§6Выбор уровня:")) return;
@@ -778,7 +365,8 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
 
         if (clicked.getType() == Material.ARROW && event.getSlot() == 18) {
-            openEnchantMenu(player);
+            menu = new EnchantMenu(this);
+            menu.open(player);
             return;
         }
 
@@ -799,7 +387,8 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
 
 
                 selectedEnchants.get(player.getUniqueId()).put(enchant, level);
-                openEnchantMenu(player);
+                menu = new EnchantMenu(this);
+                menu.open(player);
             } catch (NumberFormatException e) {
                 player.sendMessage("§cОшибка выбора уровня!");
             }
@@ -833,24 +422,13 @@ public class CustomItem extends JavaPlugin implements CommandExecutor, Listener 
         item.setItemMeta(meta);
     }
 
-
     private void updateEnchantMenu(Player player) {
         Bukkit.getScheduler().runTask(this, () -> {
             if (player.getOpenInventory().getTitle().startsWith("§6Выбор зачарований")) {
-                openEnchantMenu(player);
+                menu = new EnchantMenu(this);
+                menu.open(player);
             }
         });
-    }
-
-
-    private Enchantment getEnchantFromDisplayName(String displayName) {
-        String enchantName = displayName.substring(2);
-        for (Enchantment enchant : Enchantment.values()) {
-            if (getEnchantName(enchant).equals(enchantName)) {
-                return enchant;
-            }
-        }
-        return null;
     }
 
     public SessionManager getSessionManager(){return sessionManager;}

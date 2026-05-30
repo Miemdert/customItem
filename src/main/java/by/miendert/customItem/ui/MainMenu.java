@@ -14,8 +14,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import static by.miendert.customItem.tools.Tools.getEnchantName;
-import static by.miendert.customItem.tools.Tools.toRoman;
+import static by.miendert.customItem.util.Tools.getEnchantName;
+import static by.miendert.customItem.util.Tools.toRoman;
 
 
 public class MainMenu extends Menu {

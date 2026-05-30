@@ -1,14 +1,8 @@
 package by.miendert.customItem.model;
 
 import by.miendert.customItem.CustomItem;
-import by.miendert.customItem.config.PluginConfig;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 public class PlayerSession {
     private final CustomItem plugin;
@@ -18,6 +12,7 @@ public class PlayerSession {
     private InputState inputState = InputState.none;
     private Enchantment currentEnchantSelection = null;
     private ItemStack selectedDye = null;
+    private boolean applyingColor = false;
 
     public PlayerSession(ItemStack item, CustomItem plugin){
         this.plugin = plugin;
@@ -76,5 +71,13 @@ public class PlayerSession {
 
     public void clearInputState(){
         inputState=InputState.none;
+    }
+
+    public void setApplyingColor(boolean applyingColor) {
+        this.applyingColor = applyingColor;
+    }
+
+    public boolean isApplyingColor() {
+        return applyingColor;
     }
 }
